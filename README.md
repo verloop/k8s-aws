@@ -87,4 +87,3 @@ $ kops update cluster $CLUSTER_DOMAIN --yes
 $ kubectl create -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/monitoring-standalone/v1.2.0.yaml
 $ kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.5.0/src/deploy/kubernetes-dashboard.yaml
 ```
-
