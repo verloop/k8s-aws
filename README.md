@@ -29,61 +29,31 @@ $ docker run -v ~/.aws:/root/.aws:ro -v ~/.kube:/root/.kube -v ~/.ssh:/root/.ssh
 ```
 
 ## Inside the container
+### Basic setup
 ```bash
-# Set variables
-$ BASE_FQDN="test.verloop.io"
-# set kops option
-$ export KOPS_STATE_STORE="s3://verloop-k8s-state-store"
-# Domain of the cluster
-$ CLUSTER_DOMAIN="k8s.$BASE_FQDN"
-# Set availability zone
-# for multi-zone 
-# AVAILABILITY_ZONES=$(aws ec2 describe-availability-zones | jq -r '[.AvailabilityZones[].ZoneName]| join(",")')
-$ AVAILABILITY_ZONES=$(aws ec2 describe-availability-zones | jq -r '.AvailabilityZones[0].ZoneName')
-
-# Small for test
-$ NODE_SIZE="t2.small"
-$ MASTER_SIZE="t2.medium"
-$ NODE_COUNT=1
-
-
-$ S3_BUCKET_LOCATION_CONSTRAINT=$(aws configure get region)
-
-# PS: save $CALLER_REF_ID, you might need it next time if hosted zone didn't work
-$ CALLER_REF_ID=${CALLER_REF_ID:-`python -c "import uuid; print(uuid.uuid4())"`}
-$ echo $CALLER_REF_ID
-
-# Create a route53 hosted zone
-$ aws route53 create-hosted-zone --name $BASE_FQDN --caller-reference $CALLER_REF_ID
-
-# Use the domain name to grab the newly made hosted zone id
-$ HOSTED_ZONE_ID=$(aws route53 list-hosted-zones | jq -r '.HostedZones[]| select(.Name="$DOMAIN")| .Id')
-
-# Use the hosted zone id to grab name servers
-
-$ NS_FROM_AWS=$(aws route53 get-hosted-zone --id "$HOSTED_ZONE_ID" | jq -r '.DelegationSet.NameServers | sort[]')
-```
-
-
-**Add these name servers on your provider if it's not on route53**
-
-```bash
-# Still inside the container, test if the NS propagated
-$ NS_FROM_DIG=$(curl -s http://dig.jsondns.org/IN/$BASE_FQDN/NS | jq -r '[.answer[].rdata] | sort[]')
-
-# Check if NS records matched
-$ if [ "$NS_FROM_AWS" == "$NS_FROM_DIG" ]; then echo "NS looks good, start installing"; else echo -e "Nope"; fi
-
-# Set the state store up
-$ aws s3api create-bucket --bucket $(echo $KOPS_STATE_STORE | cut -d'/' -f3) --create-bucket-configuration LocationConstraint=$S3_BUCKET_LOCATION_CONSTRAINT
-# Create the cluster
-$ kops create cluster --kubernetes-version 1.5.1 --zones ${AVAILABILITY_ZONES} --node-count $NODE_COUNT --node-size $NODE_SIZE --master-size $MASTER_SIZE $CLUSTER_DOMAIN
-
-# PS: the following command will bring the cluster up
+$ export BASE_FQDN="example.com"
+$ export CLUSTER_DOMAIN="k8s.$BASE_FQDN"
+$ create_hosted_zone.sh
+$ setup_cluster.sh
+# Once these worked.
 $ kops update cluster $CLUSTER_DOMAIN --yes
-
-# Install heapster and dashboard
-
-$ kubectl create -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/monitoring-standalone/v1.2.0.yaml
+$ kubectl create -f https://raw.githubusercontent.com/kubernetes/kops/v1.4.3/addons/monitoring-standalone/v1.2.0.yaml
 $ kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.5.0/src/deploy/kubernetes-dashboard.yaml
+```
+### Options for further configuration
+```bash
+# Set the instance type to be used for master
+$ export MASTER_SIZE="t2.large"
+# Set the instance type to be used for minion nodes
+$ export NODE_SIZE="t2.medium"
+# Number of minion nodes
+$ export NODE_COUNT=2
+# Multiple availability zones for the k8s cluster
+# The following command selects all availability zones under current region
+$ export AVAILABILITY_ZONES=$(aws ec2 describe-availability-zones | jq -r '[.AvailabilityZones[].ZoneName]| join(",")')
+# Location constraint on s3 buckets
+$ export S3_BUCKET_LOCATION_CONSTRAINT=${S3_BUCKET_LOCATION_CONSTRAINT:-`aws configure get region`}
+
+# Use a different state store for kops
+$ export KOPS_STATE_STORE="s3://yolo-my-bucket"
 ```
