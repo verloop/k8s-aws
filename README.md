@@ -32,11 +32,16 @@ $ docker run -v ~/.aws:/root/.aws:ro -v ~/.kube:/root/.kube -v ~/.ssh:/root/.ssh
 ### Basic setup
 ```bash
 $ export BASE_FQDN="example.com"
-$ export CLUSTER_DOMAIN="k8s.$BASE_FQDN"
+$ export REGION=$(aws configure get region)
+$ export CLUSTER_DOMAIN="$REGION.$BASE_FQDN"
+## You'll need to create the bucket just once in the entire lifecycle
+$ aws s3api create-bucket --bucket $(echo $KOPS_STATE_STORE | cut -d'/' -f3) --create-bucket-configuration LocationConstraint=$REGION
+
 $ create_hosted_zone.sh
 $ setup_cluster.sh
 # Once these worked.
 $ kops update cluster $CLUSTER_DOMAIN --yes
+# Wait till the instances are up
 $ kubectl create -f https://raw.githubusercontent.com/kubernetes/kops/v1.4.3/addons/monitoring-standalone/v1.2.0.yaml
 $ kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.5.0/src/deploy/kubernetes-dashboard.yaml
 ```
@@ -51,8 +56,6 @@ $ export NODE_COUNT=2
 # Multiple availability zones for the k8s cluster
 # The following command selects all availability zones under current region
 $ export AVAILABILITY_ZONES=$(aws ec2 describe-availability-zones | jq -r '[.AvailabilityZones[].ZoneName]| join(",")')
-# Location constraint on s3 buckets
-$ export S3_BUCKET_LOCATION_CONSTRAINT=${S3_BUCKET_LOCATION_CONSTRAINT:-`aws configure get region`}
 
 # Use a different state store for kops
 $ export KOPS_STATE_STORE="s3://yolo-my-bucket"

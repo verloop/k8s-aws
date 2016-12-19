@@ -8,4 +8,4 @@ echo $CALLER_REF_ID
 
 # Create a route53 hosted zone
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones | jq -r --arg name "${BASE_FQDN}." '.HostedZones[]| select(.Name==$name)| .Id')
-if [ -z "$HOSTED_ZONE_ID" ]; then aws route53 create-hosted-zone --name $BASE_FQDN --caller-reference $CALLER_REF_ID; else echo "Hosted zone exists with namespaces" && aws route53 get-hosted-zone --id "$HOSTED_ZONE_ID" | jq -r '.DelegationSet.NameServers | sort[]'; fi
+if [ -z "$HOSTED_ZONE_ID" ]; then echo "Use these namespaces with your provider" && aws route53 create-hosted-zone --name $BASE_FQDN --caller-reference $CALLER_REF_ID | jq -r '.DelegationSet.NameServers | sort[]'; else echo "Hosted zone exists with namespaces" && aws route53 get-hosted-zone --id "$HOSTED_ZONE_ID" | jq -r '.DelegationSet.NameServers | sort[]'; fi
