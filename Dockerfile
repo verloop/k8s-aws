@@ -6,7 +6,7 @@ ADD bin/ /root/bin
 ENV PATH="/root/bin:$PATH"
 
 ENV KOPS_STATE_STORE="s3://verloop-k8s-state-store"
-# RUN apt-get update && apt-get install vim --yes
+RUN apt update && apt install vim --yes
 WORKDIR /root
 RUN pip install awscli
 VOLUME /root/.aws
